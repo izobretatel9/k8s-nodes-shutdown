@@ -1,0 +1,15 @@
+project: nodes-shutdown
+configVersion: 1
+---
+image: nodes_shutdown
+from: ubuntu:20.04
+git:
+- add: '/'
+  to: '/app'
+shell:
+  install:
+  - cd /root
+  - apt update && apt install curl -y
+  - curl -LO https://dl.k8s.io/release/v1.24.0/bin/linux/amd64/kubectl
+  - chmod +x kubectl
+  - mv kubectl /usr/bin/kubectl

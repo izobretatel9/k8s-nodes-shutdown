@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+        checksum/config: {{ include (print $.Template.BasePath "/21-configmap.yaml") . | sha256sum }}
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/worker
+                operator: In
+                values:
+                - ""
+      serviceAccountName: {{ .Chart.Name }}
+      imagePullSecrets:
+      - name: cr.yandex
+      containers:
+      - name: {{ .Chart.Name }}
+        image: {{ .Values.werf.image.nodes_shutdown }}
+        command: ["/bin/bash", "/script/delete_node.sh"]
+        volumeMounts:
+        - name: {{ .Chart.Name }}
+          mountPath: /script
+        env:
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+      volumes:
+        - name: {{ .Chart.Name }}
+          configMap:
+            name: {{ .Chart.Name }}
+            items:
+            - key: delete_node.sh
+              path: delete_node.sh

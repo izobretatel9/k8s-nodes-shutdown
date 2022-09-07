@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}
+data:
+  delete_node.sh: |
+    #!/bin/sh
+
+    nodeCreationTimestamp=$(kubectl  get no $MY_NODE_NAME -o=jsonpath='{.metadata.creationTimestamp}')
+    randomTime=$(shuf -i 900-1260 -n1)
+    sleep_time=$(shuf -i 5-25 -n1)
+    nodeCreationTimestampToSeconds=$(date  -d $nodeCreationTimestamp +"%s")
+    nodeCreationTimestampToSecondsPlusRandomTime=$(date  -d "$nodeCreationTimestamp + $randomTime min" +"%s")
+
+    while true; do
+      if [ $(date +"%s") -gt "$nodeCreationTimestampToSecondsPlusRandomTime" ]; then
+        echo "Starting drain node ${MY_NODE_NAME}"
+        kubectl  drain --delete-emptydir-data --ignore-daemonsets --disable-eviction ${MY_NODE_NAME}
+        echo "Sleeping for ${sleep_time}m"
+        sleep ${sleep_time}m
+        echo "Delete node ${MY_NODE_NAME}"
+        kubectl delete node ${MY_NODE_NAME}
+      else
+        let DIFF=($nodeCreationTimestampToSecondsPlusRandomTime-$(date +"%s"))/60
+        echo "The time has not yet come."
+        echo "The node $MY_NODE_NAME will be deleted after $DIFF minutes."
+        sleep 5m
+      fi
+    done
